@@ -103,13 +103,31 @@ fn battle_loop(combatants: &Vec<Character>) {
             }
         };
         player_attack = player_attack.trim().to_string().to_lowercase();
-        match player_attack.as_str() {
-            "fireball" | "sword" | "shield" => println!("The player chooses {player_attack}"),
-            "quit" | "exit" | "q" => {
-                println!("ok thx bye ily!");
-                break 'main_battle_loop;
+        // todo: run through the vec of powers and match against their names; how can I do that nicely?
+        /* I'd like to do some kinda combo of match and iter like this, but I don't think that's legal.
+        let picked_power: &String = match player_attack {
+            combatants[0].powers.find_if([](elem){elem.name == player_attack}) => &relevant_power.name,
+        }
+        */
+
+        // so this approach works, but seems suboptimal since I allocate a new string instead of just getting a reference to the extant power name I wanted to find. Not sure how to tease that ref out if null refs aren't a thing and I later need to read the ref outside the iter scope. I could just find the right index in the vector and use that to look up a ref to its name later, but that's both unclear and hacky.
+        let mut picked_power = String::new();
+        for power in combatants[0].powers.iter() {
+            if power.name == player_attack {
+                picked_power = power.name.clone();
+                break;
             }
-            _ => println!("{player_attack} is not within the player's power!"),
+        }
+        if picked_power.is_empty() {
+            match player_attack.to_lowercase().as_str() {
+                "quit" | "exit" | "q" => {
+                    println!("ok thx bye ily!");
+                    break 'main_battle_loop;
+                }
+                _ => println!("{player_attack} is not within the player's power!"),
+            }
+        } else {
+            println!("The player has chosen the mighty power of {picked_power}!");
         }
     }
 }

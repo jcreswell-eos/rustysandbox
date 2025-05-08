@@ -9,15 +9,26 @@ enum DamageType {
     SLASHING,
     PIERCING,
     BLUDGEONING,
+    NONE,
 }
 
 #[derive(Debug)]
 struct Character {
     name: String,
-    level: u8,
     powers: Vec<Power>,
+    stats: Stats,
+}
+
+#[derive(Debug)]
+struct Stats {
+    level: u8,
+    max_hp: f64,
     hp: f64,
+    max_mp: f64,
     mp: f64,
+    strength: f64,
+    defense: f64,
+    will: f64,
 }
 
 #[derive(Debug)]
@@ -35,8 +46,9 @@ impl StatusEffect {
 struct Power {
     name: String,
     damage: f64,
+    cost: f64,
     damage_type: DamageType,
-    effect: fn(&mut Power, &mut Character),
+    effect: fn(power: &mut Power, source: &mut Character, destination: &mut Character),
 }
 
 impl Power {
@@ -58,34 +70,98 @@ impl Power {
 fn main() {
     println!("Let's get ready to ruuuuuuumble!");
     let mut player = Character {
-        level: 5,
         name: String::from("Our Fearless Hero"),
+        stats: Stats {
+            level: 5,
+            max_hp: 100.0,
+            hp: 100.0,
+            max_mp: 100.0,
+            mp: 100.0,
+            strength: 15.0,
+            defense: 10.0,
+            will: 25.0,
+        },
         powers: vec![
             Power {
                 name: String::from("fireball"),
                 damage: 0.0,
+                cost: 25.0,
                 damage_type: DamageType::FIRE,
-                effect: |power: &mut Power, character: &mut Character| {
-                    power.damage = Power::rollNdM(character.level, 6);
-                    character.hp -= power.damage;
+                effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
+                    power.damage = Power::rollNdM(source.stats.level, 6) + source.stats.will;
+                    destination.stats.hp -= power.damage - 0.1 * destination.stats.will;
+                    source.stats.mp -= power.cost;
                 },
             },
-            //String::from("sword"),
-            //String::from("shield"),
+            Power {
+                name: String::from("sword"),
+                damage: 0.0,
+                cost: 0.0,
+                damage_type: DamageType::SLASHING,
+                effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
+                    power.damage = Power::rollNdM(2, 6) + source.stats.strength;
+                    destination.stats.hp -= power.damage - 0.5 * destination.stats.defense;
+                },
+            },
+            Power {
+                name: String::from("shield"),
+                damage: 0.0,
+                cost: 0.0,
+                damage_type: DamageType::NONE,
+                effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
+                    // todo: apply a shielded status effect to source character, which doubles defense and recovers a little HP and MP.
+                },
+            },
         ],
-        hp: 100.0,
-        mp: 100.0,
     };
     let mut monster = Character {
-        level: 5,
         name: String::from("Snort, The Unicron"),
+        stats: Stats {
+            level: 7,
+            max_hp: 1000.0,
+            hp: 1000.0,
+            max_mp: 100.0,
+            mp: 100.0,
+            strength: 50.0,
+            defense: 10.0,
+            will: 5.0,
+        },
         powers: vec![
-            //String::from("hoof stomp"),
-            //String::from("horn stab"),
-            //String::from("stone breath"),
+            Power {
+                name: String::from("hoof stomp"),
+                damage: 0.0,
+                cost: 0.0,
+                damage_type: DamageType::BLUDGEONING,
+                effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
+                    power.damage = Power::rollNdM(2, 20) + 0.5 * source.stats.strength;
+                    destination.stats.hp -= power.damage - 0.1 * destination.stats.defense;
+                },
+            },
+            Power {
+                name: String::from("horn stab"),
+                damage: 0.0,
+                cost: 0.0,
+                damage_type: DamageType::PIERCING,
+                effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
+                    power.damage = Power::rollNdM(3, 6) + 0.25 * source.stats.strength;
+                    destination.stats.hp -= power.damage;
+                    // todo: inflict bleeding status effect
+                },
+            },
+            Power {
+                name: String::from("stone breath"),
+                damage: 0.0,
+                cost: 25.0,
+                damage_type: DamageType::NONE,
+                effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
+                    power.damage = Power::rollNdM(source.stats.level, 8)
+                        - (source.stats.max_hp - source.stats.hp);
+                    destination.stats.hp -= power.damage - 0.2 * destination.stats.will;
+                    source.stats.mp -= power.cost;
+                    // todo: roll chance to inflict stone status effect
+                },
+            },
         ],
-        hp: 1000.0,
-        mp: 100.0,
     };
     let combatants = vec![player, monster];
     battle_loop(&combatants);

@@ -1,6 +1,7 @@
 use rand::Rng;
 use std::io;
 
+#[derive(Debug)]
 enum DamageType {
     FIRE,
     ICE,
@@ -10,6 +11,7 @@ enum DamageType {
     BLUDGEONING,
 }
 
+#[derive(Debug)]
 struct Character {
     name: String,
     level: u8,
@@ -18,6 +20,7 @@ struct Character {
     mp: f64,
 }
 
+#[derive(Debug)]
 struct StatusEffect {
     duration: u8,
     tags: Vec<String>,
@@ -28,11 +31,12 @@ impl StatusEffect {
     const TAG_STONED: &str = "TURNED_TO_STONE";
 }
 
+#[derive(Debug)]
 struct Power {
     name: String,
     damage: f64,
     damage_type: DamageType,
-    effect: fn(&Power, &mut Character),
+    effect: fn(&mut Power, &mut Character),
 }
 
 impl Power {
@@ -45,7 +49,7 @@ impl Power {
     fn rollNdM(dice_count: u8, die_sides: u8) -> f64 {
         let mut sum: f64 = 0.0;
         for x in 1..dice_count {
-            sum += rand::thread_rng().gen_range(1..=die_sides);
+            sum += rand::thread_rng().gen_range(1..=die_sides) as f64;
         }
         sum
     }
@@ -61,7 +65,7 @@ fn main() {
                 name: String::from("fireball"),
                 damage: 0.0,
                 damage_type: DamageType::FIRE,
-                effect: |power: &Power, character: &mut Character| {
+                effect: |power: &mut Power, character: &mut Character| {
                     power.damage = Power::rollNdM(character.level, 6);
                     character.hp -= power.damage;
                 },
@@ -88,7 +92,7 @@ fn main() {
 }
 
 fn battle_loop(combatants: &Vec<Character>) {
-    loop {
+    'main_battle_loop: loop {
         println!("Choose your weapon, one of {:#?}", combatants[0].powers);
         let mut player_attack = String::new();
         let byte_count = match io::stdin().read_line(&mut player_attack) {
@@ -98,9 +102,13 @@ fn battle_loop(combatants: &Vec<Character>) {
                 continue;
             }
         };
-        player_attack = player_attack.trim().to_string();
+        player_attack = player_attack.trim().to_string().to_lowercase();
         match player_attack.as_str() {
             "fireball" | "sword" | "shield" => println!("The player chooses {player_attack}"),
+            "quit" | "exit" | "q" => {
+                println!("ok thx bye ily!");
+                break 'main_battle_loop;
+            }
             _ => println!("{player_attack} is not within the player's power!"),
         }
     }

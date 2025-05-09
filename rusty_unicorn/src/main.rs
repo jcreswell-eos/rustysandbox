@@ -14,7 +14,6 @@ enum DamageType {
     NONE,
 }
 
-#[derive(Debug)]
 struct Character {
     name: String,
     powers: Vec<Power>,
@@ -32,7 +31,7 @@ impl Character {
     }
 }
 
-impl fmt::Display for Character {
+impl fmt::Debug for Character {
     // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write strictly the name into the supplied output
@@ -46,6 +45,17 @@ impl fmt::Display for Character {
             self.pretty_powers(),
             self.stats
         )
+    }
+}
+
+impl fmt::Display for Character {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the name into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(f, "{}\nHP: {}", self.name, self.stats.hp)
     }
 }
 
@@ -88,9 +98,9 @@ impl Power {
      * @param die_sides: the number of sides each die has
      * @return the sum of all rolled dice
      */
-    fn rollNdM(dice_count: u8, die_sides: u8) -> f64 {
+    fn roll_dice(dice_count: u8, die_sides: u8) -> f64 {
         let mut sum: f64 = 0.0;
-        for x in 1..dice_count {
+        for _ in 1..dice_count {
             sum += rand::thread_rng().gen_range(1..=die_sides) as f64;
         }
         sum
@@ -141,7 +151,7 @@ fn main() {
                 cost: 25.0,
                 damage_type: DamageType::FIRE,
                 effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
-                    power.damage = Power::rollNdM(source.stats.level, 6) + source.stats.will;
+                    power.damage = Power::roll_dice(source.stats.level, 6) + source.stats.will;
                     destination.stats.hp -= power.damage - 0.1 * destination.stats.will;
                     source.stats.mp -= power.cost;
                 },
@@ -152,7 +162,7 @@ fn main() {
                 cost: 0.0,
                 damage_type: DamageType::SLASHING,
                 effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
-                    power.damage = Power::rollNdM(2, 6) + source.stats.strength;
+                    power.damage = Power::roll_dice(2, 6) + source.stats.strength;
                     destination.stats.hp -= power.damage - 0.5 * destination.stats.defense;
                 },
             },
@@ -171,8 +181,8 @@ fn main() {
         name: String::from("Snort, The Unicron"),
         stats: Stats {
             level: 7,
-            max_hp: 1000.0,
-            hp: 1000.0,
+            max_hp: 250.0,
+            hp: 250.0,
             max_mp: 100.0,
             mp: 100.0,
             strength: 50.0,
@@ -186,7 +196,8 @@ fn main() {
                 cost: 0.0,
                 damage_type: DamageType::BLUDGEONING,
                 effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
-                    power.damage = Power::rollNdM(2, 20) + 0.5 * source.stats.strength;
+                    print!("a terrible hoof strikes you, then the earth, then you again!");
+                    power.damage = Power::roll_dice(2, 20) + 0.5 * source.stats.strength;
                     destination.stats.hp -= power.damage - 0.1 * destination.stats.defense;
                 },
             },
@@ -196,7 +207,7 @@ fn main() {
                 cost: 0.0,
                 damage_type: DamageType::PIERCING,
                 effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
-                    power.damage = Power::rollNdM(3, 6) + 0.25 * source.stats.strength;
+                    power.damage = Power::roll_dice(3, 6) + 0.25 * source.stats.strength;
                     destination.stats.hp -= power.damage;
                     // todo: inflict bleeding status effect
                 },
@@ -207,7 +218,7 @@ fn main() {
                 cost: 25.0,
                 damage_type: DamageType::NONE,
                 effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
-                    power.damage = Power::rollNdM(source.stats.level, 8)
+                    power.damage = Power::roll_dice(source.stats.level, 8)
                         - (source.stats.max_hp - source.stats.hp);
                     destination.stats.hp -= power.damage - 0.2 * destination.stats.will;
                     source.stats.mp -= power.cost;
@@ -225,11 +236,11 @@ fn main() {
 fn battle_loop(combatants: &mut HashMap<&str, &mut Character>) {
     'main_battle_loop: loop {
         println!(
-            "Choose your weapon, one of: \n{}",
+            "\nChoose your weapon, one of: \n{}",
             combatants["player"].pretty_powers()
         );
         let mut player_attack = String::new();
-        let byte_count = match io::stdin().read_line(&mut player_attack) {
+        match io::stdin().read_line(&mut player_attack) {
             Ok(byte_count) => byte_count,
             Err(e) => {
                 println!("Error reading stdin: {e}.");
@@ -237,14 +248,7 @@ fn battle_loop(combatants: &mut HashMap<&str, &mut Character>) {
             }
         };
         player_attack = player_attack.trim().to_string().to_lowercase();
-        // todo: run through the vec of powers and match against their names; how can I do that nicely?
-        /* I'd like to do some kinda combo of match and iter like this, but I don't think that's legal.
-        let picked_power: &String = match player_attack {
-            combatants[0].powers.find_if([](elem){elem.name == player_attack}) => &relevant_power.name,
-        }
-        */
 
-        // so this approach works, but seems suboptimal since I allocate a new string instead of just getting a reference to the extant power name I wanted to find. Not sure how to tease that ref out if null refs aren't a thing and I later need to read the ref outside the iter scope. I could just find the right index in the vector and use that to look up a ref to its name later, but that's both unclear and hacky.
         let mut picked_power = Power::default();
         for power in combatants["player"].powers.iter() {
             if power.name == player_attack {
@@ -261,16 +265,49 @@ fn battle_loop(combatants: &mut HashMap<&str, &mut Character>) {
                 _ => println!("{player_attack} is not within the player's power!"),
             }
         } else {
-            println!("The player has chosen the mighty power of {picked_power}!");
+            println!("\nThe player has chosen the mighty power of {picked_power}!");
             let [Some(player), Some(monster)] = combatants.get_disjoint_mut(["player", "monster"])
             else {
                 panic!("expected combatants not found in map!")
             };
             (picked_power.effect)(&mut picked_power, player, monster);
+            println!("\nThe noxious uncihorn narrows its beady glowing red eyes...");
+            let mut monster_power = ai_pick_power(player, monster);
+            (monster_power.effect)(&mut monster_power, monster, player);
         }
-        println!("Combatants, report!");
+        println!("\nCombatants, report!");
         for combatant in combatants.keys() {
-            println!("{combatant}");
+            println!("{}", combatants[combatant]);
+        }
+
+        // endgame state
+        if combatants["player"].stats.hp <= 0.0 && combatants["monster"].stats.hp <= 0.0 {
+            println!(
+                "The planet groans with the shifting fabric of the spacetime continuum as ye titans two fall simultaneously to each other's apocalyptic fury!"
+            );
+            println!("You have died! Also your foe, but also you!");
+            break;
+        } else if combatants["player"].stats.hp <= 0.0 {
+            println!(
+                "The unicorn smiles horseyly as it prepares to gnaw the remaining gristle from your splintery-charred bones."
+            );
+            println!("You have died!");
+            break;
+        } else if combatants["monster"].stats.hp <= 0.0 {
+            println!(
+                "The unicorn lets out a terrible neighing howl as it dissolved into the hellfire whence it came!"
+            );
+            println!("You stand triumphant!");
+            break;
         }
     }
+}
+
+/*
+fn ai_pick_power<'a>(player: &'a mut Character, ai: &'a mut Character) -> &'a mut Power {
+    &mut ai.powers[0]
+}
+*/
+fn ai_pick_power(player: &mut Character, ai: &mut Character) -> Power {
+    ai.powers[0].clone()
 }

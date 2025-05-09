@@ -1,7 +1,9 @@
 use rand::Rng;
+use std::collections::HashMap;
+use std::fmt;
 use std::io;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum DamageType {
     FIRE,
     ICE,
@@ -17,6 +19,17 @@ struct Character {
     name: String,
     powers: Vec<Power>,
     stats: Stats,
+}
+
+impl Character {
+    fn pretty_powers(&self) -> String {
+        let mut powers_combo = String::new();
+        for power in self.powers.iter() {
+            powers_combo.push_str(&power.name);
+            powers_combo.push_str("\n");
+        }
+        powers_combo
+    }
 }
 
 #[derive(Debug)]
@@ -42,7 +55,7 @@ impl StatusEffect {
     const TAG_STONED: &str = "TURNED_TO_STONE";
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Power {
     name: String,
     damage: f64,
@@ -64,6 +77,29 @@ impl Power {
             sum += rand::thread_rng().gen_range(1..=die_sides) as f64;
         }
         sum
+    }
+}
+
+impl Default for Power {
+    fn default() -> Self {
+        Power {
+            name: String::from(""),
+            cost: 0.0,
+            damage: 0.0,
+            damage_type: DamageType::NONE,
+            effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {},
+        }
+    }
+}
+
+impl fmt::Display for Power {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the name into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(f, "{}", self.name)
     }
 }
 
@@ -163,13 +199,18 @@ fn main() {
             },
         ],
     };
-    let combatants = vec![player, monster];
+    // todo: does passing in the player and monster via move instead of borrowing result in a reallocation or is it just a transfer of ownership?
+    let combatants = HashMap::from([("player", player), ("monster", monster)]);
+    // todo: what happens if we pass in the hashmap via move instead of borrowing? Does a reallocation occur or is it just that we could no longer use the combatants variable in this scope?
     battle_loop(&combatants);
 }
 
-fn battle_loop(combatants: &Vec<Character>) {
+fn battle_loop(combatants: &HashMap<&str, Character>) {
     'main_battle_loop: loop {
-        println!("Choose your weapon, one of {:#?}", combatants[0].powers);
+        println!(
+            "Choose your weapon, one of: \n{}",
+            combatants["player"].pretty_powers()
+        );
         let mut player_attack = String::new();
         let byte_count = match io::stdin().read_line(&mut player_attack) {
             Ok(byte_count) => byte_count,
@@ -187,14 +228,14 @@ fn battle_loop(combatants: &Vec<Character>) {
         */
 
         // so this approach works, but seems suboptimal since I allocate a new string instead of just getting a reference to the extant power name I wanted to find. Not sure how to tease that ref out if null refs aren't a thing and I later need to read the ref outside the iter scope. I could just find the right index in the vector and use that to look up a ref to its name later, but that's both unclear and hacky.
-        let mut picked_power = String::new();
-        for power in combatants[0].powers.iter() {
+        let mut picked_power = Power::default();
+        for power in combatants["player"].powers.iter() {
             if power.name == player_attack {
-                picked_power = power.name.clone();
+                picked_power = power.clone();
                 break;
             }
         }
-        if picked_power.is_empty() {
+        if picked_power.name.is_empty() {
             match player_attack.to_lowercase().as_str() {
                 "quit" | "exit" | "q" => {
                     println!("ok thx bye ily!");

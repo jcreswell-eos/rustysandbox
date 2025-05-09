@@ -25,7 +25,7 @@ impl Character {
     fn pretty_powers(&self) -> String {
         let mut powers_combo = String::new();
         for power in self.powers.iter() {
-            powers_combo.push_str("{power}");
+            powers_combo.push_str(&format!("{}", power));
             powers_combo.push_str("\n");
         }
         powers_combo

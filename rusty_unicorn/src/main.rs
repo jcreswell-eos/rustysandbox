@@ -25,10 +25,27 @@ impl Character {
     fn pretty_powers(&self) -> String {
         let mut powers_combo = String::new();
         for power in self.powers.iter() {
-            powers_combo.push_str(&power.name);
+            powers_combo.push_str("{power}");
             powers_combo.push_str("\n");
         }
         powers_combo
+    }
+}
+
+impl fmt::Display for Character {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the name into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(
+            f,
+            "{}\n{}\n{:#?}",
+            self.name,
+            self.pretty_powers(),
+            self.stats
+        )
     }
 }
 
@@ -200,12 +217,12 @@ fn main() {
         ],
     };
     // todo: does passing in the player and monster via move instead of borrowing result in a reallocation or is it just a transfer of ownership?
-    let combatants = HashMap::from([("player", player), ("monster", monster)]);
+    let mut combatants = HashMap::from([("player", &mut player), ("monster", &mut monster)]);
     // todo: what happens if we pass in the hashmap via move instead of borrowing? Does a reallocation occur or is it just that we could no longer use the combatants variable in this scope?
-    battle_loop(&combatants);
+    battle_loop(&mut combatants); // apparently the hashmap needs o be mutable even to mod the values stored in it? That's dumb af.
 }
 
-fn battle_loop(combatants: &HashMap<&str, Character>) {
+fn battle_loop(combatants: &mut HashMap<&str, &mut Character>) {
     'main_battle_loop: loop {
         println!(
             "Choose your weapon, one of: \n{}",
@@ -245,6 +262,15 @@ fn battle_loop(combatants: &HashMap<&str, Character>) {
             }
         } else {
             println!("The player has chosen the mighty power of {picked_power}!");
+            let [Some(player), Some(monster)] = combatants.get_disjoint_mut(["player", "monster"])
+            else {
+                panic!("expected combatants not found in map!")
+            };
+            (picked_power.effect)(&mut picked_power, player, monster);
+        }
+        println!("Combatants, report!");
+        for combatant in combatants.keys() {
+            println!("{combatant}");
         }
     }
 }

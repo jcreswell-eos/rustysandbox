@@ -55,7 +55,11 @@ impl fmt::Display for Character {
         // stream: `f`. Returns `fmt::Result` which indicates whether the
         // operation succeeded or failed. Note that `write!` uses syntax which
         // is very similar to `println!`.
-        write!(f, "{}\nHP: {}", self.name, self.stats.hp)
+        write!(
+            f,
+            "{}\nHP: {}\nMP: {}",
+            self.name, self.stats.hp, self.stats.mp
+        )
     }
 }
 
@@ -181,8 +185,8 @@ fn main() {
         name: String::from("Snort, The Unicron"),
         stats: Stats {
             level: 7,
-            max_hp: 250.0,
-            hp: 250.0,
+            max_hp: 150.0,
+            hp: 150.0,
             max_mp: 100.0,
             mp: 100.0,
             strength: 50.0,
@@ -289,7 +293,7 @@ fn battle_loop(combatants: &mut HashMap<&str, &mut Character>) {
             break;
         } else if combatants["player"].stats.hp <= 0.0 {
             println!(
-                "The unicorn smiles horseyly as it prepares to gnaw the remaining gristle from your splintery-charred bones."
+                "The unicorn smiles horsiely as it prepares to gnaw the remaining gristle from your splintery-charred bones."
             );
             println!("You have died!");
             break;

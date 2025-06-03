@@ -200,7 +200,7 @@ fn main() {
                 cost: 0.0,
                 damage_type: DamageType::BLUDGEONING,
                 effect: |power: &mut Power, source: &mut Character, destination: &mut Character| {
-                    print!("a terrible hoof strikes you, then the earth, then you again!");
+                    print!("a terrible hoof strikes you, then the earth, then you again!\n");
                     power.damage = Power::roll_dice(2, 20) + 0.5 * source.stats.strength;
                     destination.stats.hp -= power.damage - 0.1 * destination.stats.defense;
                 },

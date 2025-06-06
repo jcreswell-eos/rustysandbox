@@ -1,10 +1,14 @@
 use mockall_double::double;
+use std::ops::Add;
 
 pub mod thinging {
     pub struct Thing {}
     impl Thing {
         pub fn foo(&self) -> i32 {
-            return 42;
+            42
+        }
+        pub fn bar() -> i32 {
+            32
         }
     }
 
@@ -13,7 +17,10 @@ pub mod thinging {
     #[cfg(test)]
     impl MockThing {
         pub fn foo(&self) -> i32 {
-            return 4;
+            4
+        }
+        pub fn bar() -> i32 {
+            5
         }
     }
 }
@@ -21,8 +28,8 @@ pub mod thinging {
 #[double]
 use thinging::Thing;
 
-pub fn do_stuff(thing: &Thing) -> i32 {
-    thing.foo()
+pub fn do_stuff() -> i32 {
+    Thing::bar()
 }
 
 #[cfg(test)]
@@ -43,6 +50,6 @@ mod rusty_tests {
         /* Can't do this with the #[double] setup for some reason?! How do the docs not cover fundamental usage?
         mock.expect_foo().returning(|| 3);
         */
-        assert_eq!(4, do_stuff(&mock));
+        assert_eq!(5, do_stuff());
     }
 }
